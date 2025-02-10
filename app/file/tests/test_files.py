@@ -4,14 +4,14 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
-from file.models import UploadedFile
+from file.models import File
 
 
 class FileUploadDownloadTests(APITestCase):
     def setUp(self):
         # Set up any necessary data for tests
-        self.upload_url = reverse("file-upload")
-        self.download_url = reverse("file-download", args=[1])
+        self.upload_url = reverse("file:upload")
+        self.download_url = reverse("file:download", args=[1])
 
     def test_file_upload(self):
         """Test uploading a file through the API."""
@@ -26,7 +26,7 @@ class FileUploadDownloadTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("file", response.data)  # Ensure response includes file metadata
-        self.assertTrue(UploadedFile.objects.filter(id=response.data["id"]).exists())
+        self.assertTrue(File.objects.filter(id=response.data["id"]).exists())
 
     def test_file_download(self):
         """Test downloading a file through the API."""
@@ -35,11 +35,13 @@ class FileUploadDownloadTests(APITestCase):
         temp_file.write(b"Temporary file content.")
         temp_file.close()
 
-        uploaded_file = UploadedFile.objects.create(
+        uploaded_file = File.objects.create(
             file=temp_file.name, filename="tempfile.txt"
         )
 
-        response = self.client.get(reverse("file-download", args=[uploaded_file.id]))
+        response = self.client.get(
+            reverse("file:download"), args={"file_id": uploaded_file.id}
+        )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.content, b"Temporary file content.")
@@ -59,7 +61,7 @@ class FileUploadDownloadTests(APITestCase):
     def test_file_not_found(self):
         """Test downloading a non-existent file."""
         response = self.client.get(
-            reverse("file-download", args=[9999])
+            reverse("file:download", args=[9999])
         )  # Non-existent file ID
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

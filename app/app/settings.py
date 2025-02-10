@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "user",
     "recipe",
-    "files",
+    "file",
 ]
 
 MIDDLEWARE = [
@@ -176,3 +176,6 @@ LOGGING = {
         },
     },
 }
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
