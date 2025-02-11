@@ -5,6 +5,10 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.core.files.uploadedfile import SimpleUploadedFile
 from file.models import File
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FileUploadDownloadTests(APITestCase):
@@ -25,26 +29,30 @@ class FileUploadDownloadTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("file", response.data)  # Ensure response includes file metadata
-        self.assertTrue(File.objects.filter(id=response.data["id"]).exists())
+        self.assertIn(
+            "file_id", response.data
+        )  # Ensure response includes file metadata
+        self.assertTrue(File.objects.filter(id=response.data["file_id"]).exists())
 
     def test_file_download(self):
         """Test downloading a file through the API."""
         # First, create a file entry in the database
-        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, dir=settings.MEDIA_ROOT)
         temp_file.write(b"Temporary file content.")
         temp_file.close()
 
         uploaded_file = File.objects.create(
-            file=temp_file.name, filename="tempfile.txt"
+            file=temp_file.name,
+            name="tempfile.txt",
+            description="Some test description",
         )
 
-        response = self.client.get(
-            reverse("file:download"), args={"file_id": uploaded_file.id}
-        )
+        response = self.client.get(reverse("file:download", args=[uploaded_file.id]))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.content, b"Temporary file content.")
+
+        content = b"".join(response.streaming_content)
+        self.assertEqual(content, b"Temporary file content.")
 
         # Cleanup the temporary file
         os.remove(temp_file.name)
@@ -55,7 +63,7 @@ class FileUploadDownloadTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn(
-            "file", response.data
+            "No file provided", response.data["error"]
         )  # Ensure error message refers to missing file
 
     def test_file_not_found(self):
@@ -78,4 +86,4 @@ class FileUploadDownloadTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("file", response.data)
+        self.assertIn("file_id", response.data.keys())
