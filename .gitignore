@@ -172,3 +172,4 @@ cython_debug/
 
 # local storage
 app/media
+temp
